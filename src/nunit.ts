@@ -118,7 +118,9 @@ function sanitizePath(
   if (filename.startsWith('/github/workspace'))
     return relative('/github/workspace', filename).replace(/\\/g, '/')
   else if (srcReplacement != null)
-    return filename.replace(srcReplacement.from, srcReplacement.to)
+    return filename
+      .replace(/\\/g, '/')
+      .replace(srcReplacement.from, srcReplacement.to)
   else return relative(process.cwd(), filename).replace(/\\/g, '/')
 }
 
