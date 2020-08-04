@@ -10,12 +10,13 @@ export class UploadOptions {
     public readonly path: string,
     public readonly access_token: string,
     public readonly title: string,
-    public readonly num_failures: number
+    public readonly num_failures: number,
+    public readonly srcReplacement: string
   ) {}
 }
 
 export async function publishResults(options: UploadOptions): Promise<void> {
-  const results = await readResults(options.path)
+  const results = await readResults(options.path, options.srcReplacement)
 
   const octokit = getOctokit(options.access_token)
 
@@ -50,7 +51,8 @@ export async function publishResults(options: UploadOptions): Promise<void> {
     owner: context.repo.owner,
     repo: context.repo.repo,
     status: 'completed',
-    conclusion: results.failed > 0 || results.passed === 0 ? 'failure' : 'success',
+    conclusion:
+      results.failed > 0 || results.passed === 0 ? 'failure' : 'success',
     output: {
       title: options.title,
       summary,

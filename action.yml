@@ -16,6 +16,10 @@ inputs:
     description: "Report title"
     required: false
     default: "Test Report"
+  src-replacement:
+    description: "Indicates file path adjustement to match source control useful for docker build"
+    required: false
+    default: ""
 runs:
   using: 'node12'
   main: 'dist/index.js'

@@ -7,8 +7,15 @@ async function run(): Promise<void> {
     const numFailures = parseInt(getInput('numFailures'))
     const accessToken = getInput('access-token')
     const title = getInput('reportTitle')
+    const srcReplacement = getInput('src-replacement')
 
-    const options = new UploadOptions(path, accessToken, title, numFailures)
+    const options = new UploadOptions(
+      path,
+      accessToken,
+      title,
+      numFailures,
+      srcReplacement
+    )
 
     await publishResults(options)
   } catch (error) {

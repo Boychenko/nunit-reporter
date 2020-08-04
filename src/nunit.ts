@@ -3,6 +3,24 @@ import {create} from '@actions/glob'
 import {promises as fs} from 'fs'
 import {relative} from 'path'
 
+class SrcReplacement {
+  public constructor(
+    public readonly from: string,
+    public readonly to: string
+  ) {}
+
+  public static Create(srcReplacement: string): SrcReplacement | null {
+    if (srcReplacement == null || srcReplacement === '') {
+      return null
+    }
+    const paths = srcReplacement.split('|')
+    if (paths.length !== 2) {
+      return null
+    }
+    return new SrcReplacement(paths[0], paths[1])
+  }
+}
+
 export class Annotation {
   public constructor(
     public readonly path: string,
@@ -53,13 +71,16 @@ function getLocation(stacktrace: string): [string, number] {
   return ['unknown', 0]
 }
 
-export function testCaseAnnotation(testcase: any): Annotation {
+export function testCaseAnnotation(
+  testcase: any,
+  srcReplacement: SrcReplacement | null = null
+): Annotation {
   const [filename, lineno] =
     'stack-trace' in testcase.failure
       ? getLocation(testcase.failure['stack-trace'])
       : ['unknown', 0]
 
-  const sanitizedFilename = sanitizePath(filename)
+  const sanitizedFilename = sanitizePath(filename, srcReplacement)
   const message = testcase.failure.message
   const classname = testcase.classname
   const methodname = testcase.methodname
@@ -90,11 +111,15 @@ export class TestResult {
   ) {}
 }
 
-function sanitizePath(filename: string): string {
-  if (filename.startsWith("/github/workspace"))
-    return relative("/github/workspace", filename);
-  else
-    return relative(process.cwd(), filename).replace(/\\/g, '/')
+function sanitizePath(
+  filename: string,
+  srcReplacement: SrcReplacement | null
+): string {
+  if (filename.startsWith('/github/workspace'))
+    return relative('/github/workspace', filename).replace(/\\/g, '/')
+  else if (srcReplacement != null)
+    return filename.replace(srcReplacement.from, srcReplacement.to)
+  else return relative(process.cwd(), filename).replace(/\\/g, '/')
 }
 
 function getTestCases(testsuite: any): any[] {
@@ -120,7 +145,10 @@ function getTestCases(testsuite: any): any[] {
   return testCases
 }
 
-export async function parseNunit(nunitReport: string): Promise<TestResult> {
+export async function parseNunit(
+  nunitReport: string,
+  srcReplacement: SrcReplacement | null = null
+): Promise<TestResult> {
   const nunitResults: any = await parseStringPromise(nunitReport, {
     trim: true,
     mergeAttrs: true,
@@ -132,7 +160,9 @@ export async function parseNunit(nunitReport: string): Promise<TestResult> {
   const testCases = getTestCases(testRun)
   const failedCases = testCases.filter(tc => tc.result === 'Failed')
 
-  const annotations = failedCases.map(testCaseAnnotation)
+  const annotations = failedCases.map(tc =>
+    testCaseAnnotation(tc, srcReplacement)
+  )
 
   return new TestResult(
     parseInt(testRun.passed),
@@ -149,19 +179,26 @@ function combine(result1: TestResult, result2: TestResult): TestResult {
   return new TestResult(passed, failed, annotations)
 }
 
-async function* resultGenerator(path: string): AsyncGenerator<TestResult> {
+async function* resultGenerator(
+  path: string,
+  srcReplacement: SrcReplacement | null
+): AsyncGenerator<TestResult> {
   const globber = await create(path, {followSymbolicLinks: false})
 
   for await (const file of globber.globGenerator()) {
     const data = await fs.readFile(file, 'utf8')
-    yield parseNunit(data)
+    yield parseNunit(data, srcReplacement)
   }
 }
 
-export async function readResults(path: string): Promise<TestResult> {
+export async function readResults(
+  path: string,
+  srcReplacement: string = ''
+): Promise<TestResult> {
+  const replacement = SrcReplacement.Create(srcReplacement)
   let results = new TestResult(0, 0, [])
 
-  for await (const result of resultGenerator(path))
+  for await (const result of resultGenerator(path, replacement))
     results = combine(results, result)
 
   return results
