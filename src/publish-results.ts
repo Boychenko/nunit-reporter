@@ -47,7 +47,7 @@ export async function publishResults(options: UploadOptions): Promise<void> {
   const pr = context.payload.pull_request
   await octokit.checks.create({
     head_sha: (pr && pr['head'] && pr['head'].sha) || context.sha,
-    name: 'Tests Report',
+    name: options.title,
     owner: context.repo.owner,
     repo: context.repo.repo,
     status: 'completed',

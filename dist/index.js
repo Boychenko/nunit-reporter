@@ -2219,7 +2219,9 @@ function sanitizePath(filename, srcReplacement) {
     if (filename.startsWith('/github/workspace'))
         return path_1.relative('/github/workspace', filename).replace(/\\/g, '/');
     else if (srcReplacement != null)
-        return filename.replace(/\\/g, '/').replace(srcReplacement.from, srcReplacement.to);
+        return filename
+            .replace(/\\/g, '/')
+            .replace(srcReplacement.from, srcReplacement.to);
     else
         return path_1.relative(process.cwd(), filename).replace(/\\/g, '/');
 }
@@ -16579,7 +16581,7 @@ async function publishResults(options) {
     const pr = github_1.context.payload.pull_request;
     await octokit.checks.create({
         head_sha: (pr && pr['head'] && pr['head'].sha) || github_1.context.sha,
-        name: 'Tests Report',
+        name: options.title,
         owner: github_1.context.repo.owner,
         repo: github_1.context.repo.repo,
         status: 'completed',
